@@ -1,0 +1,2 @@
+20201027:132615.864- /usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@centos81
+20201027:133406.299- /usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@alpine312

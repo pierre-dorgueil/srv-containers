@@ -30,11 +30,11 @@ printf 'tzdata tzdata/Areas select Etc\ntzdata tzdata/Zones/Etc select MET\n' | 
       wget \
       ;\
     apt-get clean; \
-    sed -i '/pam_systemd.so/s/^/# /' /etc/pam.d/common-session; \
     for s in cockpit ssh network-manager; do systemctl enable $s; done; \
     for u in getty.target console-getty.service getty@.service; do systemctl mask $u; done; \
-    useradd -p '$6$5BOxARZjHS.FR2tu$2xuUMLRfzL9LBpOrrGnmQqxE3NFWnMlBMFevo/XAUrrojnJDRs9ga4UeKFn16cbkL/rlx5TlloGEug1iY2mR5.' -s /bin/bash app-adm; \
-    usermod -p '$6$5BOxARZjHS.FR2tu$2xuUMLRfzL9LBpOrrGnmQqxE3NFWnMlBMFevo/XAUrrojnJDRs9ga4UeKFn16cbkL/rlx5TlloGEug1iY2mR5.' -s /bin/bash root; \
+    for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
+    useradd -p '$6$WUubFYMoeifUpYPN$UdHamrxkmm9d6nwaU2kfgQ5RZ5QPeZtl0aaylewjB88vVu/EMA.nF2.sHOM4tE8WDNyj80wK8GMvmMWQobVV.0' -s /bin/bash app-adm; \
+    usermod -p '$6$WUubFYMoeifUpYPN$UdHamrxkmm9d6nwaU2kfgQ5RZ5QPeZtl0aaylewjB88vVu/EMA.nF2.sHOM4tE8WDNyj80wK8GMvmMWQobVV.0' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

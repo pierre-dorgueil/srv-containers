@@ -30,8 +30,9 @@ RUN sed -i 's/^\(rpm.install.excludedocs.*\)/# \1/' /etc/zypp/zypp.conf; \
     for s in NetworkManager sshd; do systemctl enable $s; done; \
     for u in getty.target console-getty.service getty@tty1.service; do systemctl mask $u; done; \
     ln -s /usr/bin/ncat /usr/bin/nc; \
-    useradd -p '$6$B/DXYGQGj1LWHzna$t4/i7NWNozELdHETAOZ/c.b8xDXIm9zyH2jtGUqZQOXIYKaaQVB61sfbv65JA8dLvdmSepgt7sismPbrWoQLp1' -s /bin/bash app-adm; \
-    usermod -p '$6$B/DXYGQGj1LWHzna$t4/i7NWNozELdHETAOZ/c.b8xDXIm9zyH2jtGUqZQOXIYKaaQVB61sfbv65JA8dLvdmSepgt7sismPbrWoQLp1' -s /bin/bash root; \
+    for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
+    useradd -p '$6$KeXW.k07EY/08uTT$6mSwuLaMG.yRpl1gWl4JKo3jWd7x6sDHAq.z9z40BVybUu8yfoZ0dYIZpT/oidsQYqzn4HBLWcUzmXe4mh2Kq1' -s /bin/bash app-adm; \
+    usermod -p '$6$KeXW.k07EY/08uTT$6mSwuLaMG.yRpl1gWl4JKo3jWd7x6sDHAq.z9z40BVybUu8yfoZ0dYIZpT/oidsQYqzn4HBLWcUzmXe4mh2Kq1' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

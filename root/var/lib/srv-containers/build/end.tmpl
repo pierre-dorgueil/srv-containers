@@ -1,3 +1,4 @@
+    for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
     useradd -p '@passhash@' -s /bin/bash app-adm; \
     usermod -p '@passhash@' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm

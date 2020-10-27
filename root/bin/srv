@@ -52,6 +52,9 @@ sum=1ebbd3e34237af26da5dc08a4e440464
 
 # timestamps std input, send to log file (and screen if without 'only' arg)
 # export SRV_DEBUG=y -> copy log lines to screen
+
+export SRV_DEBUG=y
+
 log() {
     [ "$SRV_DEBUG" != y -a "$1" != screen ] && logcmd="cat >> $log" || logcmd="tee -a $log >&2"
     while read line; do
@@ -64,7 +67,14 @@ logc() { { echo "*** $1"; $1 2>&1; } | log $2; }
 
 
 # launch a remote ssh command on host
-dossh() { host=$1; shift; /usr/bin/ssh -X -o StrictHostKeyChecking=no app-adm@$host "$@"; }
+# dossh log host command - always use root private key
+dossh() {
+    local log=$1; shift
+    local host=$1; shift
+    local x="/usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@$host"
+    [ $log != 0 ] && echo "$x" "$@" | log
+    $x "$@"
+}
 
 
 # conditions for waitfor
@@ -152,25 +162,35 @@ usage() {
 cnt=
 cmd=$1; shift
 [ "$cmd" = "" ] && usage
+sshcmd=
+found=0
 
 case "$1" in
-""|all) cnt=$(seq $maxservers);;
-*) for s; do
-       found=0
-       for ((n=1; n<=$maxservers; n++)); do
-	   getsrv $n
-	   echo "$snam"|grep -q "^$s$" && found=1 && cnt="$cnt
-$n"
+    ""|all)
+	[ "$cmd" = ssh ] && usage 2 "ssh expects exactly one server"
+	cnt=$(seq $maxservers)
+	;;
+    
+    *) for s; do
+	   if [ "$cmd" = ssh -a "$found" = 1 ]; then
+	       sshcmd="$sshcmd$s "
+	   else
+	       found=0
+	       for ((n=1; n<=$maxservers; n++)); do
+		   getsrv $n
+		   echo "$snam"|grep -q "^$s$" && found=1 && cnt="$cnt
+$n"	       	   
+	       done
+	       if [ $found -eq 0 ]; then
+		   n=$(($(echo "$s"|tr -dc 0-9)))
+		   ((n<1||n>maxservers)) && usage 2 "cannot find $s"
+		   found=1 && cnt="$cnt
+$n"	       	   
+	       fi
+	   fi
        done
-       if [ $found -eq 0 ]; then
-	   n=$(($(echo "$s"|tr -dc 0-9)))
-	   ((n<1||n>maxservers)) && usage 2 "cannot find $s"
-	   cnt="$cnt
-$n"
-       fi
-   done
-   cnt=$(echo $(echo "$cnt"|sort -nu))
-   ;;
+       cnt=$(echo $(echo "$cnt"|sort -nu))
+       ;;
 esac
 
 
@@ -224,7 +244,7 @@ case $cmd in
 	getsrv $n
 	
 	if [ "$(podman inspect $server$n -f {{.State.Status}} 2>/dev/null)" = running ]; then
-	    dossh $snam
+	    dossh 1 $snam "$sshcmd"
 	else
 	    echo "$server$n($snam) is down"
 	fi
@@ -270,7 +290,7 @@ case $cmd in
 		
 		poweroff)       x=kill;    st=stopped;;
 		
-		stop|shutdown)  eval "[ $condstarted ]" && logc "dossh $snam sudo poweroff"
+		stop|shutdown)  eval "[ $condstarted ]" && dossh 1 $snam sudo poweroff
 				st=stopped
 				;;
 		
@@ -278,14 +298,14 @@ case $cmd in
 		
 		unbuild)        others=$(podman ps -qf ancestor=$oci_image$styp)
 				[ "$others" ] && logc "podman rm -f $others"
-				logc "podman rmi $oci_image$styp"
-				x="rm -f"; st=removed;;
+				logc "podman rmi -f $oci_image$styp"
+				st=removed;;
 	    esac
 	    [ "$x" ] && logc "podman $x $server$n"
 	    
 	    case $st in
 		stopped) cond="$condstopped"; st=halted;;
-		started) cond="x\$(dossh $snam echo y) = xy"; st=alive;;
+		started) cond="x\$(dossh 0 $snam echo y) = xy"; st=alive;;
 		removed) cond="$condremoved"; st=removed;;
 	    esac
 	    [ "$st" ]   && echo -n "[$n] "
@@ -341,21 +361,23 @@ case $cmd in
 	    if [ "$(podman images -qf reference=$oci_image$styp)" = "" ]; then
 		cd $build
 		for u in $cont_users; do
-		    key=$(eval echo ~$u)/.ssh/id_rsa
+		    key=$(eval echo ~$u)/.ssh/srv_rsa
 		    if [ ! -f $key ]; then
-			ssh-keygen -q -t rsa -N '' -f $key
+			su - $u -c "ssh-keygen -q -t rsa -N '' -f $key"
 			chmod 600 $key; chown $u:$u $key
+			logc "echo '$key : $(cat $key)'"
 		    fi
 		    [ ! -f $key ] && echo "unable to create private key $key" && exit 5
 		    cat $key.pub
 		done | sort -u > dot-ssh/authorized_keys
 		chown 700 dot-ssh/authorized_keys
+		logc "echo injected keys : $(cat dot-ssh/authorized_keys)'"
 		logc "podman build -t $oci_image$styp -f $styp" screen
 		cd - &>/dev/null
 	    fi
 	    
 	    # run new server container
-	    x="podman run -d -privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
+	    x="podman run -d --privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
 	    { echo $x; $x; } | log
 	    waitfor 10 1 "$server$n started" \
                          'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \
@@ -383,7 +405,7 @@ for c in '$cmds'; do
   esac;
   echo -n "$c ";
 done'
-		res=$(dossh $snam "$rmtscript")
+		res=$(dossh 0 $snam "$rmtscript")
 		[ "$res" != "" ] && echo "  MISSING : $res"
 	    fi
 	done

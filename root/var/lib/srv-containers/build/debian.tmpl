@@ -30,6 +30,5 @@ printf 'tzdata tzdata/Areas select Etc\ntzdata tzdata/Zones/Etc select MET\n' | 
       wget \
       ;\
     apt-get clean; \
-    sed -i '/pam_systemd.so/s/^/# /' /etc/pam.d/common-session; \
     for s in cockpit ssh network-manager; do systemctl enable $s; done; \
     for u in getty.target console-getty.service getty@.service; do systemctl mask $u; done; \

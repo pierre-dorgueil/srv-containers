@@ -15,7 +15,7 @@
 # wrapping to root script - must be root
 exe=$0; [ $(id -u) != 0 ] && exec sudo $exe $*
 
-# check needed software @@@ ask for min verzion of podman ?
+# check needed software
 needs() { for i; do which $i &>/dev/null && continue; echo "*** err : $i not installed"; return 1; done; return 0; }
 needs md5sum ssh-keygen podman || exit 1
 
@@ -64,7 +64,7 @@ logc() { { echo "*** $1"; $1 2>&1; } | log $2; }
 
 
 # launch a remote ssh command on host
-dossh() { host=$1; shift; su - $SUDO_USER -c "LANG=C LC_ALL=C /usr/bin/ssh -X -o StrictHostKeyChecking=no app-adm@$host '$*'" 2>/dev/null; }
+dossh() { host=$1; shift; /usr/bin/ssh -X -o StrictHostKeyChecking=no app-adm@$host "$@"; }
 
 
 # conditions for waitfor
@@ -103,17 +103,6 @@ getsrv() {
     s=${s%:*}; styp=${s/:*/}; snam=${s/*:/}
 }
 
-# check the user matches public key configured in builds, if any
-checkuser() {
-    af=$build/dot-ssh/authorized_keys
-    if [ -f $af ]; then          # a build was done
-	key=$(eval echo ~$SUDO_USER)/.ssh/id_rsa.pub
-	[ ! -f $key ]   && { echo "No ssh key in $key";                    exit 8; }
-	cmp -s $af $key || { echo "Please run as $(awk '{print $3}' $af)"; exit 9; }
-    fi
-    return 0
-}
-
 
 # ----- code ----------------------------------------------
 
@@ -130,9 +119,13 @@ while read min name buildfile autostart comments; do
     [ "$min" == "-" ] && servers[$((++maxservers))]=$buildfile:$name:$autostart
 done < $config
 
+# list of authorized users 
+cont_users=$(for u in root $SUDO_USER $(grep '\<srv_users\>' $config|tr -d =); do
+		 [ -d "$(eval ls -d ~$u 2>/dev/null)" ] && echo $u
+	     done | sort -u)
+
 
 # parameters management
-
 usage() {
     [ "$2" != "" ] && echo "Error : $2" 
     printf "Usage : $exe \e[94mcommand\e[0m \e[96mtarget\e[0m
@@ -277,8 +270,7 @@ case $cmd in
 		
 		poweroff)       x=kill;    st=stopped;;
 		
-		stop|shutdown)  checkuser
-				eval "[ $condstarted ]" && logc "dossh $snam sudo poweroff"
+		stop|shutdown)  eval "[ $condstarted ]" && logc "dossh $snam sudo poweroff"
 				st=stopped
 				;;
 		
@@ -293,8 +285,7 @@ case $cmd in
 	    
 	    case $st in
 		stopped) cond="$condstopped"; st=halted;;
-		started) checkuser
-			 cond="x\$(dossh $snam echo y) = xy"; st=alive;;
+		started) cond="x\$(dossh $snam echo y) = xy"; st=alive;;
 		removed) cond="$condremoved"; st=removed;;
 	    esac
 	    [ "$st" ]   && echo -n "[$n] "
@@ -305,8 +296,6 @@ case $cmd in
 	;;
     
     reset|build|rebuild|fullreset)
-	checkuser
-	
 	# check dockerfiles are uptodate
 	$build/makebuildfiles &>/dev/null
 	    
@@ -330,8 +319,9 @@ case $cmd in
 		others=$(podman ps -qaf ancestor=$oci_image$styp)
 		[ "$others" ] && podman rm -f $others &>/dev/null
 		logc "podman rmi $oci_image$styp"
-		lineinfile $(eval echo ~$SUDO_USER)/.ssh/known_hosts ",$podnet$((100+$n)) "
-		lineinfile ~root/.ssh/known_hosts                    ",$podnet$((100+$n)) "
+		for u in $cont_users; do
+		    lineinfile $(eval echo ~$u)/.ssh/known_hosts ",$podnet$((100+$n)) "
+		done
 	    done
 	fi
 	
@@ -350,24 +340,23 @@ case $cmd in
 	    # rebuild image if absent
 	    if [ "$(podman images -qf reference=$oci_image$styp)" = "" ]; then
 		cd $build
-		key=$(eval echo ~$SUDO_USER)/.ssh/id_rsa
-		if [ ! -f $key ]; then
-		    ssh-keygen -q -t rsa -N '' -f $key
-		    chmod 600 $key; chown $SUDO_USER:$SUDO_USER $key
-		fi
-		[ ! -f $key ] && echo "unable to create private key $key" && exit 5
-		cp $key.pub dot-ssh/authorized_keys
+		for u in $cont_users; do
+		    key=$(eval echo ~$u)/.ssh/id_rsa
+		    if [ ! -f $key ]; then
+			ssh-keygen -q -t rsa -N '' -f $key
+			chmod 600 $key; chown $u:$u $key
+		    fi
+		    [ ! -f $key ] && echo "unable to create private key $key" && exit 5
+		    cat $key.pub
+		done | sort -u > dot-ssh/authorized_keys
 		chown 700 dot-ssh/authorized_keys
 		logc "podman build -t $oci_image$styp -f $styp" screen
 		cd - &>/dev/null
 	    fi
 	    
 	    # run new server container
-	    x="podman run --privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 8.8.8.8 $oci_image$styp"
-	    echo $x | log
-	    $x &
-	    sleep 1
-
+	    x="podman run -d -privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
+	    { echo $x; $x; } | log
 	    waitfor 10 1 "$server$n started" \
                          'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \
                          && exit 6
@@ -377,7 +366,6 @@ case $cmd in
 	;;
 
     check)
-	checkuser
 	cmds=$(grep "test_cmds " $config | sed 's/test_cmds//')
 	filter=§
 	for n in $cnt; do

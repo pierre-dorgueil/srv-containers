@@ -1,0 +1,19 @@
+changer d'emplacement pour le stockage des containers :
+
+dest=/backup    # espace de stockage (rapide?) de 2G par container
+                # remplace /var/lib/containers si pas assez de place
+
+semanage fcontext -l | grep ^/var/lib/containers | grep -v None | while read spec a f type; do
+    t=$(echo $type | sed "s/system_u:object_r://;s/:s0//")
+    s=$(echo $spec | sed "s:/var/lib:$dest:')
+    x="semanage fcontext -a -t $t '$s'"
+    echo $x; $x  
+done
+x="restorecon -vR $dest/containers"
+echo $x; $x
+
+
+.git/config :
+url = https://pierre-dorgueil@github.com/pierre-dorgueil/srv-containers.git
+
+git add .; git commit -m v0.1; git push origin main

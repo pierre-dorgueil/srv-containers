@@ -1,0 +1,13 @@
+[Unit]
+Description=handling of srv containers
+Requires=io.podman.service
+After=io.podman.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=srv autostart 
+ExecStop=srv __off 
+
+[Install]
+WantedBy=multi-user.target

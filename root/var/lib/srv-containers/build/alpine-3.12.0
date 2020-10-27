@@ -1,0 +1,36 @@
+FROM docker.io/alpine:3.12.0
+
+LABEL description="base alpine linux 3.12.0" maintainer="Pierre Dorgueil <pierre.dorgueil@gmail.com>"
+
+# install addon software, enable system services, set passwords to 'alpine', make app-adm sudoer
+RUN apk add \
+      apk-file \
+      bash \
+      bash-completion \
+      bash-doc \
+      bind-tools \
+      curl \
+      man-db \
+      man-pages \
+      mlocate \
+      ncurses \
+      networkmanager \
+      nmap \
+      openrc \
+      openssh-server-pam \
+      shadow \
+      sudo \
+      vim \
+      ;\
+    mkdir /run/openrc; touch /run/openrc/softlevel; \
+    for s in sshd; do rc-update add $s; done; \
+    rm -f /etc/init.d/agetty; sed -i '/^tty/s/^/#/' /etc/inittab; \
+    ln -s /usr/share/bash-completion/bash_completion /etc; \
+    useradd -p '$6$TU3f/AGcCWfAz1GJ$3akhy6h939NVgibhr7efYjoLGmGhOiWnpE4vXnHD5Oxx9Maj/4cIqYYckfX5Ff99aoNqZ9LGQjBgEA6YLPEJp.' -s /bin/bash app-adm; \
+    usermod -p '$6$TU3f/AGcCWfAz1GJ$3akhy6h939NVgibhr7efYjoLGmGhOiWnpE4vXnHD5Oxx9Maj/4cIqYYckfX5Ff99aoNqZ9LGQjBgEA6YLPEJp.' -s /bin/bash root; \
+    echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
+
+# allows for passwordless ssh access
+COPY --chown=1000:1000 ./dot-ssh /home/app-adm/.ssh
+
+CMD ["/sbin/init"]

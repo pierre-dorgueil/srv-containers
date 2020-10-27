@@ -1,0 +1,47 @@
+description : test linux operating system distributions as containers
+maintener :   pierre.dorgueil@gmail.com
+copyright :   2020 Pierre Dorgueil
+license :     https://www.gnu.org/licenses/gpl-3.0.txt
+
+usage :       type "srv" without args
+
+contents :
+   /bin/srv : main binary. type srv without args for a short help
+   /var/lib/srv-containers/README : this file
+   /var/lib/srv-containers/COPYING : LGPLv3 copy
+   /var/lib/srv-containers/srv-containers.conf : main configuration file
+     - servers declarations
+     - commands to check for presence
+   /var/lib/srv-containers/build/ : containers building files
+     - templates for each os (*.tmpl)
+     - makebuildfiles : update buildfiles from templates
+     - buildfiles for each server (don't touch them directly, only modify templates)
+     - dot-ssh : authorized_keys file to inject into containers for passwordless access
+
+
+startup instructions :
+  # cd /var/lib/srv-containers
+  # cp srv-containers.conf.sample srv-containers.conf
+  # vi srv-containers.conf
+      declare the servers to run (from commented samples)
+        1st column is the container dns name. container name will be srv#, first declared is 1
+        2nd column is the name of the dockerfile. must match one file in /etc/srv-containers
+        3rd column contains a * if the container must start with the host machine, else a .
+        remaining of the line may contain comments
+
+    then login as the user which will manage containers (must be sudoer)
+  # su - tux
+  $ srv start
+
+    any sudoer user may use the containers
+    app-adm and root password are both first part of build file name
+      ex : suse-leap -> password is suse
+
+
+to find which package contains a desired file,
+
+  fedora/centos : yum provides '*/file'
+  suse :          zypper se --provides '*/file'
+  debian/ubuntu : apt-file update; apt-file search '*/file'
+  alpine :        apk-file update; apk-file search '*/file'
+

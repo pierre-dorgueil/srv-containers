@@ -1,0 +1,8 @@
+    useradd -p '@passhash@' -s /bin/bash app-adm; \
+    usermod -p '@passhash@' -s /bin/bash root; \
+    echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
+
+# allows for passwordless ssh access
+COPY --chown=1000:1000 ./dot-ssh /home/app-adm/.ssh
+
+CMD ["/sbin/init"]

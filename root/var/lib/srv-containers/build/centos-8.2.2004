@@ -1,0 +1,36 @@
+FROM docker.io/centos:8.2.2004
+
+LABEL description="base centos 8.2.2004" maintainer="Pierre Dorgueil <pierre.dorgueil@gmail.com>"
+
+# install addon software, enable system services, set passwords to 'centos', make app-adm sudoer
+RUN sed -i -e '/tsflags=nodocs/s/^/#/' /etc/dnf/dnf.conf; \
+    yum install -y \
+      NetworkManager \
+      bash-completion \
+      bind-utils \
+      cockpit \
+      man-db \
+      man-pages \
+      mlocate \
+      ncurses \
+      net-tools \
+      nmap \
+      openssh-server \
+      passwd \
+      sudo \
+      vim \
+      wget \
+      which \
+      ; \
+    yum reinstall -y bash; \
+    yum clean all; \
+    for u in cockpit.socket NetworkManager sshd; do systemctl enable $u; done; \
+    for u in getty.target console-getty.service getty@tty1.service; do systemctl mask $u; done; \
+    useradd -p '$6$jr9qpCPjNfKlwe8Q$cb33DCQMGnIVo9eW68JtkzcUToD9/5GNyymYSFNxDEUyN5GjhsHKfvjvwnRzsffXeVgfI3pmTZeY8aCmS15/u.' -s /bin/bash app-adm; \
+    usermod -p '$6$jr9qpCPjNfKlwe8Q$cb33DCQMGnIVo9eW68JtkzcUToD9/5GNyymYSFNxDEUyN5GjhsHKfvjvwnRzsffXeVgfI3pmTZeY8aCmS15/u.' -s /bin/bash root; \
+    echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
+
+# allows for passwordless ssh access
+COPY --chown=1000:1000 ./dot-ssh /home/app-adm/.ssh
+
+CMD ["/sbin/init"]

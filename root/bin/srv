@@ -1,0 +1,410 @@
+#!/bin/bash
+
+# description : test linux operating system distributions as containers
+# history :     - v1.0 20201022    first version    pierre.dorgueil@gmail.com
+
+# startup :     type "srv" without args
+# usage :       type "srv" without args
+
+# copyright :   2020 Pierre Dorgueil
+# license :     GPLv3
+
+
+# ----- pre-execution checks ------------------------------
+
+# wrapping to root script - must be root
+exe=$0; [ $(id -u) != 0 ] && exec sudo $exe $*
+
+# check needed software @@@ ask for min verzion of podman ?
+needs() { for i; do which $i &>/dev/null && continue; echo "*** err : $i not installed"; return 1; done; return 0; }
+needs md5sum ssh-keygen podman || exit 1
+
+
+# ----- constants -----------------------------------------
+
+# servers name
+server=srv
+
+# base name of the container image to use or create
+oci_image=localhost/ch_
+
+# ip adress of podman default network
+podnet=10.88.0.
+
+# files
+sw=srv-containers
+base=/var/lib/$sw
+build=$base/build
+config=$base/$sw.conf
+log=/var/log/$sw.log
+
+
+# ----- license -------------------------------------------
+
+license=$base/COPYING
+sum=1ebbd3e34237af26da5dc08a4e440464
+[ -f $license ] && [ $(md5sum $license|cut -d' ' -f1) != $sum ] && rm -f $license
+[ ! -f $license ] && wget https://www.gnu.org/licenses/gpl-3.0.txt -O$license 2>/dev/null
+[ ! -f $license ] && exit 99
+
+
+# utilities
+
+# timestamps std input, send to log file (and screen if without 'only' arg)
+# export SRV_DEBUG=y -> copy log lines to screen
+log() {
+    [ "$SRV_DEBUG" != y -a "$1" != screen ] && logcmd="cat >> $log" || logcmd="tee -a $log >&2"
+    while read line; do
+	tm=$(date +%Y%m%d:%H%M%S.%N)
+	echo "${tm:0:19}- $line"
+    done | eval "$logcmd"
+}
+# execute a command and send its output to log. 2nd argument is to be passed to log() ('screen')
+logc() { { echo "*** $1"; $1 2>&1; } | log $2; }
+
+
+# launch a remote ssh command on host
+dossh() { host=$1; shift; su - $SUDO_USER -c "LANG=C LC_ALL=C /usr/bin/ssh -X -o StrictHostKeyChecking=no app-adm@$host '$*'" 2>/dev/null; }
+
+
+# conditions for waitfor
+condremoved='"$(podman ps -a --format {{.Names}}|grep ^$server$n$)"  = ""'
+condstopped='"$(podman ps    --format {{.Names}}|grep ^$server$n$)"  = ""'
+condstarted='"$(podman ps    --format {{.Names}}|grep ^$server$n$)" != ""'
+
+# waitfor times sleep "prompt" "command"
+waitfor() {
+  local t e=ok p=0
+  for ((t=$1; t>0; t--)); do
+    waitfor=$(eval "$4" 2>/dev/null); [ "$waitfor" ] && break
+    [ $p -eq 1 ] && echo -n "Waiting $(($1*$2))s for $3"
+    [ $p -gt 1 ] && echo -n .
+    ((p++))
+    sleep $2
+  done
+  [ $t = 0 ]   && e=FAIL
+  [ $p -gt 1 ] && echo " $e"
+  [ $t = 0 ]
+}
+
+
+# lineinfile filepath seek replacedby
+lineinfile() {
+    local cont=$(cat "$1" 2>/dev/null)
+    local newcont=$(echo -n "$cont" | grep -v "$2"; [ "$3" ] && echo "$3")
+    [ "$cont" != "$newcont" ] && echo "$newcont" > "$1"
+}
+
+
+# get standard server variables
+getsrv() {
+    local s=${servers[$1]}
+    sast=${s/*:/}; case "$sast" in "*"|1|y|o|t) sast='*';; *) sast='.';; esac
+    s=${s%:*}; styp=${s/:*/}; snam=${s/*:/}
+}
+
+# check the user matches public key configured in builds, if any
+checkuser() {
+    af=$build/dot-ssh/authorized_keys
+    if [ -f $af ]; then          # a build was done
+	key=$(eval echo ~$SUDO_USER)/.ssh/id_rsa.pub
+	[ ! -f $key ]   && { echo "No ssh key in $key";                    exit 8; }
+	cmp -s $af $key || { echo "Please run as $(awk '{print $3}' $af)"; exit 9; }
+    fi
+    return 0
+}
+
+
+# ----- code ----------------------------------------------
+
+# REMOVEME : originally 128, but podman net handling seems not to release them correctly
+echo 65536 > /proc/sys/fs/inotify/max_user_instances
+
+# ensures stable locales
+export LANG=C LC_ALL=C
+
+
+# read containers declarations
+maxservers=0
+while read min name buildfile autostart comments; do
+    [ "$min" == "-" ] && servers[$((++maxservers))]=$buildfile:$name:$autostart
+done < $config
+
+
+# parameters management
+
+usage() {
+    [ "$2" != "" ] && echo "Error : $2" 
+    printf "Usage : $exe \e[94mcommand\e[0m \e[96mtarget\e[0m
+  commands :
+     \e[94mlist\e[0m      : show active servers
+     \e[94mlistall\e[0m   : show all servers
+     \e[94mssh\e[0m       : ssh connect a running server
+     \e[94mstart\e[0m     : start a server
+     \e[94mstop\e[0m      : cleanly stops a running server
+     \e[94mpoweroff\e[0m  : immediately stops a server
+     \e[94mrestart\e[0m   : restart a running server
+     \e[94mreset\e[0m     : restart a server from image \e[1m\e[31m!!! all changes are lost\e[0m
+     \e[94mfullreset\e[0m : rebuild a server image from scratch, then 'reset'
+
+     \e[94mcheck\e[0m     : check for a basic commands set on started servers
+
+  targets :
+     \e[96mall\e[0m (or no target) to address all defined servers
+     a space separated list of servers \e[96mnames\e[0m or \e[96mnumbers\e[0m, between 1 and $maxservers
+"
+    exit $1
+}
+
+cnt=
+cmd=$1; shift
+[ "$cmd" = "" ] && usage
+
+case "$1" in
+""|all) cnt=$(seq $maxservers);;
+*) for s; do
+       found=0
+       for ((n=1; n<=$maxservers; n++)); do
+	   getsrv $n
+	   echo "$snam"|grep -q "^$s$" && found=1 && cnt="$cnt
+$n"
+       done
+       if [ $found -eq 0 ]; then
+	   n=$(($(echo "$s"|tr -dc 0-9)))
+	   ((n<1||n>maxservers)) && usage 2 "cannot find $s"
+	   cnt="$cnt
+$n"
+       fi
+   done
+   cnt=$(echo $(echo "$cnt"|sort -nu))
+   ;;
+esac
+
+
+# do actions
+case $cmd in
+
+    # list of servers and states
+    list|listall)
+	{
+	    if [ $cmd = list ]; then
+		long=n
+		frm="%-2s %-15s %-12s %-20s\n"
+		printf "$frm" N° NAME IP LAST_CHANGE| tr _ ' '
+	    else
+		long=y
+		frm="%-2s %-15s %-12s %-9s %-20s %-30s\n"
+		printf "$frm" N° NAME IP ' STATUS' LAST_CHANGE IMAGE | tr _ ' '
+	    fi
+	    for n in $cnt; do
+		getsrv $n
+		st=$(podman inspect $server$n -f {{.State.Status}} 2>/dev/null)
+		case "$st" in
+		    running)
+			ip=$(podman inspect $server$n -f {{.NetworkSettings.IPAddress}})
+			tm=$(podman inspect $server$n -f {{.State.StartedAt}}|cut -b1-19)
+			[ $long = y ] && printf "$frm" "$n" "$snam" "$ip" "${sast}started" "$tm" "$oci_image$styp" \
+		                      || printf "$frm" "$n" "$snam" "$ip"                  "$tm"
+			;;
+		    
+		    exited|configured)
+			if [ $long = y ]; then
+			    tm=$(podman inspect $server$n -f {{.State.FinishedAt}}|cut -b1-19)
+			    xc=$(podman inspect $server$n -f {{.State.ExitCode}})
+			    printf "$frm" "$n" "$snam" "" "${sast}xc=$xc" "$tm" "$oci_image$styp"
+			fi
+			;;
+		    
+		    "") [ $long = y ] && printf "$frm" "$n" "$snam" "" "${sast}removed" "" ""
+			;;
+		    
+		    *)  [ $long = y ] && printf "$frm" "$n" "$snam" "" "${sast}($st?)" "" ""
+			;;
+		esac
+	    done
+	}
+	;;
+
+    # ssh access to server
+    ssh)
+	n=$(echo $cnt|cut -d' ' -f1)
+	getsrv $n
+	
+	if [ "$(podman inspect $server$n -f {{.State.Status}} 2>/dev/null)" = running ]; then
+	    dossh $snam
+	else
+	    echo "$server$n($snam) is down"
+	fi
+	;;
+	
+    # saves activation state of servers into .conf file and power them off
+    # intended for srv systemd service only
+    __off)
+	cp $config $config.bak
+	maxservers=0; n=0
+	while IFS='\n' read a; do
+	    if echo "$a"|grep -q '^ *-'; then
+		read min name buildfile autostart comments < <(echo "$a")
+		podman ps|grep -q localhost/ch_$buildfile:latest && as='*' || as=.
+		printf "%s %-14s %-18s %-10s %s\n" $min $name $buildfile "$as" "$comments"
+	    else
+		echo "$a"
+	    fi
+	done < $config.bak > $config
+	$exe poweroff
+	;;
+    
+    stop|shutdown|start|poweroff|restart|reboot|unbuild|autostart)
+	for n in $cnt; do
+	    getsrv $n
+	    # update /etc/hosts
+	    lineinfile /etc/hosts "^$podnet$((100+$n)) " "$podnet$((100+$n)) $server$n $server$n.local $snam $snam.local"
+	    
+	    cond=; x=; st=
+	    case $cmd in
+		start)          x=start
+				if eval "[ $condremoved ]"; then
+				    $exe build $n; x=; st=
+				else
+				    eval "[ $condstarted ]" && x=
+				    st=started
+				fi
+				;;
+		
+		autostart)      [ "$sast" = "*" ] && echo -n "[$n] " && $exe start $n &>/dev/null
+				continue
+				;;
+		
+		poweroff)       x=kill;    st=stopped;;
+		
+		stop|shutdown)  checkuser
+				eval "[ $condstarted ]" && logc "dossh $snam sudo poweroff"
+				st=stopped
+				;;
+		
+		restart|reboot) x=restart; st=started;;
+		
+		unbuild)        others=$(podman ps -qf ancestor=$oci_image$styp)
+				[ "$others" ] && logc "podman rm -f $others"
+				logc "podman rmi $oci_image$styp"
+				x="rm -f"; st=removed;;
+	    esac
+	    [ "$x" ] && logc "podman $x $server$n"
+	    
+	    case $st in
+		stopped) cond="$condstopped"; st=halted;;
+		started) checkuser
+			 cond="x\$(dossh $snam echo y) = xy"; st=alive;;
+		removed) cond="$condremoved"; st=removed;;
+	    esac
+	    [ "$st" ]   && echo -n "[$n] "
+	    [ "$cond" ] && waitfor 20 3 "$server$n $st " "[ $cond ] && echo ok" 
+	done
+	echo
+	$exe listall $cnt
+	;;
+    
+    reset|build|rebuild|fullreset)
+	checkuser
+	
+	# check dockerfiles are uptodate
+	$build/makebuildfiles &>/dev/null
+	    
+	# only warns for fullreset, not rebuild (undocumented)
+	[ $(echo -n $cnt | wc -w) -gt 1 ] && s=s || s=
+	case $cmd in
+	    fullreset)
+		read -p "server$s $(echo $cnt) will be erased and rebuild. Are you sure ? [y/N] ?"
+		[ "$REPLY" != y ] && exit 0
+		;;
+	    rebuild)
+		cmd=fullreset
+		;;
+	esac
+	
+	# remove all images, their related containers and their known_hosts lines if full reset
+	if [ $cmd = fullreset ]; then
+	    for n in $cnt; do
+		getsrv $n
+		# remove all containers based on this image
+		others=$(podman ps -qaf ancestor=$oci_image$styp)
+		[ "$others" ] && podman rm -f $others &>/dev/null
+		logc "podman rmi $oci_image$styp"
+		lineinfile $(eval echo ~$SUDO_USER)/.ssh/known_hosts ",$podnet$((100+$n)) "
+		lineinfile ~root/.ssh/known_hosts                    ",$podnet$((100+$n)) "
+	    done
+	fi
+	
+	# start all requested containers
+	for n in $cnt; do
+	    getsrv $n
+	    # update /etc/hosts
+	    lineinfile /etc/hosts "^$podnet$((100+$n)) " "$podnet$((100+$n)) $server$n $server$n.local $snam $snam.local"
+	    
+	    # try to remove a server container
+	    podman rm -f $server$n &>/dev/null
+	    waitfor 10 1 "$server$n removed" \
+                         "[ $condremoved ] && echo gone" \
+                         && exit 4
+	    
+	    # rebuild image if absent
+	    if [ "$(podman images -qf reference=$oci_image$styp)" = "" ]; then
+		cd $build
+		key=$(eval echo ~$SUDO_USER)/.ssh/id_rsa
+		if [ ! -f $key ]; then
+		    ssh-keygen -q -t rsa -N '' -f $key
+		    chmod 600 $key; chown $SUDO_USER:$SUDO_USER $key
+		fi
+		[ ! -f $key ] && echo "unable to create private key $key" && exit 5
+		cp $key.pub dot-ssh/authorized_keys
+		chown 700 dot-ssh/authorized_keys
+		logc "podman build -t $oci_image$styp -f $styp" screen
+		cd - &>/dev/null
+	    fi
+	    
+	    # run new server container
+	    x="podman run --privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 8.8.8.8 $oci_image$styp"
+	    echo $x | log
+	    $x &
+	    sleep 1
+
+	    waitfor 10 1 "$server$n started" \
+                         'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \
+                         && exit 6
+	    echo -n "[$n] "
+	done
+	[ $cmd != build ] && echo && $exe listall $cnt
+	;;
+
+    check)
+	checkuser
+	cmds=$(grep "test_cmds " $config | sed 's/test_cmds//')
+	filter=§
+	for n in $cnt; do
+	    getsrv $n
+	    st=$(podman inspect $server$n -f {{.State.Status}} 2>/dev/null)
+	    if [ "$st" = running ]; then
+		$exe list $n | grep -v $filter
+		filter=" NAME "
+		rmtscript='
+for c in '$cmds'; do
+  case $c in
+    *^*) eval "${c//^/ }" &>/dev/null && continue;;
+     /*) ls "$c" &>/dev/null          && continue;;
+      *) which "$c" &>/dev/null       && continue;;
+  esac;
+  echo -n "$c ";
+done'
+		res=$(dossh $snam "$rmtscript")
+		[ "$res" != "" ] && echo "  MISSING : $res"
+	    fi
+	done
+	;;
+	
+    *) usage 1 "bad parameter $cmd" 
+	;;
+esac
+
+exit 0
+
+# ----- end of code ---------------------------------------

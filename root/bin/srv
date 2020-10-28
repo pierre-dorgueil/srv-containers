@@ -122,9 +122,6 @@ getsrv() {
 # REMOVEME : originally 128, but podman net handling seems not to release them correctly
 echo 65536 > /proc/sys/fs/inotify/max_user_instances
 
-# ensures stable locales
-export LANG=C LC_ALL=C
-
 
 # read containers declarations
 maxservers=0
@@ -380,7 +377,10 @@ case $cmd in
 	    fi
 	    
 	    # run new server container
-	    x="podman run -d --privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
+	    
+	    podvers=$(podman --version | tr -d 'a-z ')
+	    priv=; [[ $podvers < 2 ]] && priv=--privileged # may prevent old versions of systemd to run
+	    x="podman run -d $priv --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
 	    { echo $x; $x; } | log
 	    waitfor 10 1 "$server$n started" \
                          'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \

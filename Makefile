@@ -1,10 +1,9 @@
 all:
-	@echo "make archive : create archive from system binaries"
-	@echo "make install_to_local : install archive to local copy (./root)"
+	@echo "make archive : create archive from system binaries and copies locally (./root)"
 	@echo "make install : install archive to system binaries"
 
 vers = 0.1.2
-chgs = check podman version, tests on RHEL8.1, CentOS8, fedora 32 hosts
+chgs = check podman version, tested on RHEL8.1, CentOS8.x, fedora 32 hosts
 
 arch = srv.txz
 base = var/lib/srv-containers
@@ -20,13 +19,11 @@ excl = --exclude $(base)/build/dot-ssh/* \
 
 archive:
 	(cd /; sudo tar cJf - $(excl) $(exe) $(base) $(serv)) > $(arch)
+	(cd root; rm -rf *; tar xJvf -) < $(arch)
 
 install:
 	(cd /; sudo tar xJf -) < $(arch)
 	sudo /sbin/restorecon -v /bin/srv /$(serv)
-
-install_to_local:
-	(cd root; rm -rf *; tar xJvf -) < $(arch)
 
 readme:
 	@{ printf '==============\nsrv-containers\n==============\n\n::\n\n'; \

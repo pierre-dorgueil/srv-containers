@@ -33,4 +33,4 @@ readme:
            sed 's/[^m]*m//g;s/,)/)/;s/%/\n/g;s/^/ /'; } > README.rst
 
 push: readme
-	@git add . && git commit -m "v$(vers)i : $(chgs)" && git push origin main
+	@git add .; git commit -m "v$(vers)i : $(chgs)"; git push origin main

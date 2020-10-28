@@ -18,6 +18,7 @@ exe=$0; [ $(id -u) != 0 ] && exec sudo $exe $*
 # check needed software
 needs() { for i; do which $i &>/dev/null && continue; echo "*** err : $i not installed"; return 1; done; return 0; }
 needs md5sum ssh-keygen podman || exit 1
+[[ $(podman --version | tr -d 'a-z ') < 2.1 ]] && echo "*** err : podman version < 2.1" && exit 1
 
 
 # ----- constants -----------------------------------------
@@ -79,11 +80,15 @@ dossh() {
     [ $log = 1 ] && { echo $x "$@"; $x "$@" 2>&1; } | log
 }
 
-
 # conditions for waitfor
-condremoved='"$(podman ps -a --format {{.Names}}|grep ^$server$n$)"  = ""'
-condstopped='"$(podman ps    --format {{.Names}}|grep ^$server$n$)"  = ""'
-condstarted='"$(podman ps    --format {{.Names}}|grep ^$server$n$)" != ""'
+#condremoved='"$(podman ps -a --format {{.Names}}|grep ^$server$n$)"  = ""'
+#condstopped='"$(podman ps    --format {{.Names}}|grep ^$server$n$)"  = ""'
+#condstarted='"$(podman ps    --format {{.Names}}|grep ^$server$n$)" != ""'
+# only works this way on podman v2
+condremoved='"$(podman ps -qaf name=^$server$n$)"  = ""'
+condstopped='"$(podman ps -qf  name=^$server$n$)"  = ""'
+condstarted='"$(podman ps -qf  name=^$server$n$)" != ""'
+
 
 # waitfor times sleep "prompt" "command"
 waitfor() {
@@ -377,10 +382,7 @@ case $cmd in
 	    fi
 	    
 	    # run new server container
-	    
-	    podvers=$(podman --version | tr -d 'a-z ')
-	    priv=; [[ $podvers < 2 ]] && priv=--privileged # may prevent old versions of systemd to run
-	    x="podman run -d $priv --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
+	    x="podman run --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
 	    { echo $x; $x; } | log
 	    waitfor 10 1 "$server$n started" \
                          'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \

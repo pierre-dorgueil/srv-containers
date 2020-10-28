@@ -61,7 +61,7 @@ log() {
     local line tm
     while read line; do
 	tm=$(date +%Y%m%d:%H%M%S.%N)
-	echo "$tm  $line" >> $log
+	echo "${tm:0:18}  $line" >> $log
 	[ "$SRV_DEBUG" = y -o "$1" = time ] && echo "$tm  $line"
 	[ "$1" = line ]                     && echo "$line"
     done
@@ -73,21 +73,17 @@ logc() { { echo "*** $1"; $1 2>&1; } | log $2; }
 # launch a remote ssh command on host
 # dossh log host command - always use root private key
 dossh() {
-    local log=$1; shift
-    local host=$1; shift
-    local x="/usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@$host"
-    [ $log = 0 ] && $x "$@"
-    [ $log = 1 ] && { echo $x "$@"; $x "$@" 2>&1; } | log
+    local l=$1; shift
+    local h=$1; shift
+    local x="/usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@$h"
+    [ $l = 0 ] && $x "$@"
+    [ $l = 1 ] && { echo $x "$@"; $x "$@" 2>&1; } | log
 }
 
 # conditions for waitfor
-#condremoved='"$(podman ps -a --format {{.Names}}|grep ^$server$n$)"  = ""'
-#condstopped='"$(podman ps    --format {{.Names}}|grep ^$server$n$)"  = ""'
-#condstarted='"$(podman ps    --format {{.Names}}|grep ^$server$n$)" != ""'
-# only works this way on podman v2
-condremoved='"$(podman ps -qaf name=^$server$n$)"  = ""'
-condstopped='"$(podman ps -qf  name=^$server$n$)"  = ""'
-condstarted='"$(podman ps -qf  name=^$server$n$)" != ""'
+condremoved='"$(podman ps -a --format {{.Names}}|grep ^$server$n$)"  = ""'
+condstopped='"$(podman ps    --format {{.Names}}|grep ^$server$n$)"  = ""'
+condstarted='"$(podman ps    --format {{.Names}}|grep ^$server$n$)" != ""'
 
 
 # waitfor times sleep "prompt" "command"
@@ -164,11 +160,14 @@ usage() {
     exit $1
 }
 
+[ "$1" = --debug ] && SRV_DEBUG=y && shift
+
 cnt=
 cmd=$1; shift
 [ "$cmd" = "" ] && usage
 sshcmd=
 found=0
+
 
 case "$1" in
     ""|all)
@@ -382,11 +381,13 @@ case $cmd in
 	    fi
 	    
 	    # run new server container
-	    x="podman run --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
-	    { echo $x; $x; } | log
-	    waitfor 10 1 "$server$n started" \
-                         'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' \
-                         && exit 6
+	    x="podman run --privileged --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
+	    echo $x | log
+            $x &>/dev/null & sleep 1
+	    waitfor 15 1 "$server$n started" \
+                         'podman inspect $server$n -f {{.NetworkSettings.IPAddress}}' && exit 6
+            waitfor 15 4 "$server$n alive" \
+                         '[ x$(dossh 0 $snam echo y) = xy ] && echo y'                && exit 6
 	    echo -n "[$n] "
 	done
 	[ $cmd != build ] && echo && $exe listall $cnt

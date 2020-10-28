@@ -7,7 +7,7 @@ dockerfiles="alpine-3.12.0 centos-8.1.1911 centos-8.2.2004 fedora-33 fedora-34 s
 
 for f in $dockerfiles; do
     type=${f/-*/}; tag=${f/*-/}
-    new=$(cat $type.tmpl end.tmpl | sed "s!@tag@!$tag!;s!@passhash@!$(mkpasswd -m sha512crypt $type)!")
+    new=$(cat $type.tmpl end.tmpl | sed "s!@tag@!$tag!;s!@passhash@!$(openssl passwd -salt x -6 $type)!")
     if [ ! -f $f ]; then
 	changed=-1
     else

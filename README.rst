@@ -12,7 +12,7 @@ srv-containers
   - v0.1  20201026 early version	            pierre.dorgueil@gmail.com
  
  
- Usage : /usr/bin/srv command target
+ Usage : /bin/srv command target
   commands :
      list      : show active servers
      listall   : show all servers

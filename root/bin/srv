@@ -51,16 +51,19 @@ sum=1ebbd3e34237af26da5dc08a4e440464
 # utilities
 
 # timestamps std input, send to log file (and screen if without 'only' arg)
-# export SRV_DEBUG=y -> copy log lines to screen
+# export SRV_DEBUG=y -> add log lines to screen
 
-export SRV_DEBUG=y
-
+# send stdin to log w/timestame, and
+#  to tty w/timestamp if $SRV_DEBUG = y or $1 = time
+#  to tty wo/timestamp if $1 = line
 log() {
-    [ "$SRV_DEBUG" != y -a "$1" != screen ] && logcmd="cat >> $log" || logcmd="tee -a $log >&2"
+    local line tm
     while read line; do
 	tm=$(date +%Y%m%d:%H%M%S.%N)
-	echo "${tm:0:19}- $line"
-    done | eval "$logcmd"
+	echo "$tm  $line" >> $log
+	[ "$SRV_DEBUG" = y -o "$1" = time ] && echo "$tm  $line"
+	[ "$1" = line ]                     && echo "$line"
+    done
 }
 # execute a command and send its output to log. 2nd argument is to be passed to log() ('screen')
 logc() { { echo "*** $1"; $1 2>&1; } | log $2; }
@@ -72,8 +75,8 @@ dossh() {
     local log=$1; shift
     local host=$1; shift
     local x="/usr/bin/ssh -X -i ~/.ssh/srv_rsa -o StrictHostKeyChecking=no app-adm@$host"
-    [ $log != 0 ] && echo "$x" "$@" | log
-    $x "$@"
+    [ $log = 0 ] && $x "$@"
+    [ $log = 1 ] && { echo $x "$@"; $x "$@" 2>&1; } | log
 }
 
 
@@ -244,7 +247,7 @@ case $cmd in
 	getsrv $n
 	
 	if [ "$(podman inspect $server$n -f {{.State.Status}} 2>/dev/null)" = running ]; then
-	    dossh 1 $snam "$sshcmd"
+	    dossh 0 $snam "$sshcmd" 
 	else
 	    echo "$server$n($snam) is down"
 	fi
@@ -372,7 +375,7 @@ case $cmd in
 		done | sort -u > dot-ssh/authorized_keys
 		chown 700 dot-ssh/authorized_keys
 		logc "echo injected keys : $(cat dot-ssh/authorized_keys)'"
-		logc "podman build -t $oci_image$styp -f $styp" screen
+		logc "podman build -t $oci_image$styp -f $styp" time
 		cd - &>/dev/null
 	    fi
 	    
@@ -405,7 +408,7 @@ for c in '$cmds'; do
   esac;
   echo -n "$c ";
 done'
-		res=$(dossh 0 $snam "$rmtscript")
+		res=$(dossh 0 $snam "$rmtscript" 2>/dev/null)
 		[ "$res" != "" ] && echo "  MISSING : $res"
 	    fi
 	done

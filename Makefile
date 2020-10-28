@@ -1,10 +1,10 @@
 all:
 	@echo "make archive : create archive from system binaries"
-	@echo "make install : install archive to system binaries"
 	@echo "make install_to_local : install archive to local copy (./root)"
-	@echo "make install_from_local : install local copy to system binaries"
+	@echo "make install : install archive to system binaries"
 
-vers = 0.1
+vers = 0.1.2
+chgs = check podman version, tests on RHEL8.1, CentOS8, fedora 32 hosts
 
 arch = srv.txz
 base = var/lib/srv-containers
@@ -25,10 +25,6 @@ install:
 	(cd /; sudo tar xJf -) < $(arch)
 	sudo /sbin/restorecon -v /bin/srv /$(serv)
 
-install_from_local:
-	(cd root; tar cJf - $(excl) $(exe) $(base) $(serv)) > $(arch)
-	make install
-
 install_to_local:
 	(cd root; rm -rf *; tar xJvf -) < $(arch)
 
@@ -40,4 +36,4 @@ readme:
            sed 's/[^m]*m//g;s/,)/)/;s/%/\n/g;s/^/ /'; } > README.rst
 
 push: readme
-	@git add .; git commit -m v$(vers); git push origin main
+	@git add .; git commit -m "v$(vers)i : $(chgs)"; git push origin main

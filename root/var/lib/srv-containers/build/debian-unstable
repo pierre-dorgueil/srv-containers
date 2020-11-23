@@ -33,8 +33,8 @@ printf 'tzdata tzdata/Areas select Etc\ntzdata tzdata/Zones/Etc select MET\n' | 
     for s in cockpit ssh network-manager; do systemctl enable $s; done; \
     for u in getty.target console-getty.service getty@.service; do systemctl mask $u; done; \
     for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
-    useradd -p '$6$x$J8R8LOpbfggwtmpMYbD9ZWwDLrhh4X7CXGrT.M8wI4Sfjufgp5tq64ekW/3CzeEyPKUV2/TUYicrQNGequYei/' -s /bin/bash app-adm; \
-    usermod -p '$6$x$J8R8LOpbfggwtmpMYbD9ZWwDLrhh4X7CXGrT.M8wI4Sfjufgp5tq64ekW/3CzeEyPKUV2/TUYicrQNGequYei/' -s /bin/bash root; \
+    useradd -p '$6$A3W1XMC7x2nJ7T3D$ZnSoWP4blB.xOPTgmC4v6rGRYsNUmTPTlM1SF08RvL14.ERMkCu9ASq./MXEff0w4R8QbufteYkZlrAf3zbgL0' -s /bin/bash app-adm; \
+    usermod -p '$6$A3W1XMC7x2nJ7T3D$ZnSoWP4blB.xOPTgmC4v6rGRYsNUmTPTlM1SF08RvL14.ERMkCu9ASq./MXEff0w4R8QbufteYkZlrAf3zbgL0' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

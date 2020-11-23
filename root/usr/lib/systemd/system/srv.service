@@ -1,7 +1,7 @@
 [Unit]
 Description=handling of srv containers
-Requires=io.podman.service
-After=io.podman.service
+Requires=basic.target
+After=basic.target
 
 [Service]
 Type=oneshot

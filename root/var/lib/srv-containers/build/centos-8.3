@@ -1,6 +1,6 @@
-FROM docker.io/centos:8.1.1911
+FROM docker.io/centos:8.2.2004
 
-LABEL description="base centos 8.1.1911" maintainer="Pierre Dorgueil <pierre.dorgueil@gmail.com>"
+LABEL description="base centos 8.2.2004" maintainer="Pierre Dorgueil <pierre.dorgueil@gmail.com>"
 
 # install addon software, enable system services, set passwords to 'centos', make app-adm sudoer
 RUN sed -i -e '/tsflags=nodocs/s/^/#/' /etc/dnf/dnf.conf; \
@@ -23,12 +23,13 @@ RUN sed -i -e '/tsflags=nodocs/s/^/#/' /etc/dnf/dnf.conf; \
       which \
       ; \
     yum reinstall -y bash; \
+    yum update -y; \  
     yum clean all; \
     for u in cockpit.socket NetworkManager sshd; do systemctl enable $u; done; \
     for u in getty.target console-getty.service getty@tty1.service; do systemctl mask $u; done; \
     for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
-    useradd -p '$6$eGls.73XveLscVrb$5hlSD/HFytm47kKEbtpG40PWauFuyhSrAXiTH4Gu3F5NJiad37bnqfpDK5MDzuGlssGcKNp3EUcy8mLO.MjCs.' -s /bin/bash app-adm; \
-    usermod -p '$6$eGls.73XveLscVrb$5hlSD/HFytm47kKEbtpG40PWauFuyhSrAXiTH4Gu3F5NJiad37bnqfpDK5MDzuGlssGcKNp3EUcy8mLO.MjCs.' -s /bin/bash root; \
+    useradd -p '$6$cwEm5topCopeanC9$tM27nuvMXm4gN1pgPMadT7vyZ5SF4tlIyhXknIY6/ke677WvVdt4Aa/lwZ9nSlXo2U6Ns/rKSyN0VMh/bl7e.0' -s /bin/bash app-adm; \
+    usermod -p '$6$cwEm5topCopeanC9$tM27nuvMXm4gN1pgPMadT7vyZ5SF4tlIyhXknIY6/ke677WvVdt4Aa/lwZ9nSlXo2U6Ns/rKSyN0VMh/bl7e.0' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

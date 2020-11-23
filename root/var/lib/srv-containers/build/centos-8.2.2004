@@ -27,8 +27,8 @@ RUN sed -i -e '/tsflags=nodocs/s/^/#/' /etc/dnf/dnf.conf; \
     for u in cockpit.socket NetworkManager sshd; do systemctl enable $u; done; \
     for u in getty.target console-getty.service getty@tty1.service; do systemctl mask $u; done; \
     for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
-    useradd -p '$6$x$24BmNf8lX7vA4rFdkV8iqsx/wQgZmAZRm7RMOYUM.oZUEYl50buksApsEyk7wNlYCkBhIMNnut/Zs8id29d7.0' -s /bin/bash app-adm; \
-    usermod -p '$6$x$24BmNf8lX7vA4rFdkV8iqsx/wQgZmAZRm7RMOYUM.oZUEYl50buksApsEyk7wNlYCkBhIMNnut/Zs8id29d7.0' -s /bin/bash root; \
+    useradd -p '$6$wTRaT5DwZB26ruWH$ypaLy29NDmSni4M3NXC1d8fFyB4Ob/0Qjs/RUo0qLv1NPu1oeh/upkRb69yGQnA28N6kmg0puTjV8xULUv24M.' -s /bin/bash app-adm; \
+    usermod -p '$6$wTRaT5DwZB26ruWH$ypaLy29NDmSni4M3NXC1d8fFyB4Ob/0Qjs/RUo0qLv1NPu1oeh/upkRb69yGQnA28N6kmg0puTjV8xULUv24M.' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

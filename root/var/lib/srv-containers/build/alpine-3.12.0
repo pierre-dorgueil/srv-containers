@@ -27,8 +27,8 @@ RUN apk add \
     rm -f /etc/init.d/agetty; sed -i '/^tty/s/^/#/' /etc/inittab; \
     ln -s /usr/share/bash-completion/bash_completion /etc; \
     for p in /etc/pam.d/*; do grep -q 'pam_systemd\.so' $p && sed -i '/pam_systemd.so/s/^/# /' $p; done; \
-    useradd -p '$6$x$a3bR1IWuTs/twWDhTNHkhvBhmDm3QVDkcAINkGzMsx99Ei5SgWbHw2xl6BkJ6M4AJNtcthieJodDIEBscuMMR1' -s /bin/bash app-adm; \
-    usermod -p '$6$x$a3bR1IWuTs/twWDhTNHkhvBhmDm3QVDkcAINkGzMsx99Ei5SgWbHw2xl6BkJ6M4AJNtcthieJodDIEBscuMMR1' -s /bin/bash root; \
+    useradd -p '$6$0xwEmLcNgWiIsn/m$uoifSaqUcCYMBtXiR95qbocbekbOecnEU3GuPB5/f69Ga/vSiDBEp3fLdPQ2odVS/z/lFO0tWoXShInr/VtTw.' -s /bin/bash app-adm; \
+    usermod -p '$6$0xwEmLcNgWiIsn/m$uoifSaqUcCYMBtXiR95qbocbekbOecnEU3GuPB5/f69Ga/vSiDBEp3fLdPQ2odVS/z/lFO0tWoXShInr/VtTw.' -s /bin/bash root; \
     echo "app-adm ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/app-adm
 
 # allows for passwordless ssh access

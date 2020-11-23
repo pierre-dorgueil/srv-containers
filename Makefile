@@ -34,3 +34,6 @@ readme:
 
 push: readme
 	@git add .; git commit -m "v$(vers)i : $(chgs)"; git push origin main
+
+pull:
+	@git pull origin main

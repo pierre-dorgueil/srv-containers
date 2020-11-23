@@ -12,7 +12,7 @@ srv-containers
   - v0.1  20201026 early version	            pierre.dorgueil@gmail.com
  
  
- Usage : /bin/srv command target
+ Usage : /usr/bin/srv command target
   commands :
      list      : show active servers
      listall   : show all servers
@@ -28,7 +28,7 @@ srv-containers
 
   targets :
      all (or no target) to address all defined servers
-     a space separated list of servers names or numbers, between 1 and 11
+     a space separated list of servers names or numbers, between 1 and 12
 
  
  
@@ -69,7 +69,7 @@ srv-containers
  
  Build templates :
  
-   use provided templates as examples (alpine,centos,debian,fedora,suse,ubuntu)
+   use provided templates as examples (alpine,centos,debian,fedora,kali,suse,ubuntu)
  
    to find which remote package contains a needed file, from within the running container,
      fedora/centos : yum provides '*/file'

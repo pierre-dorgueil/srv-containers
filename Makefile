@@ -15,6 +15,7 @@ incl = bin/srv \
 
 excl = --exclude $(base)/build/dot-ssh/* \
        --exclude $(base)/srv-containers.conf \
+       --exclude $(base)/srv-containers.conf.bak \
        --exclude $(base)/COPYING
 
 archive:

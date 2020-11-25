@@ -175,34 +175,35 @@ found=0
 
 mkdir -p $logdir
 
-case "$1" in
-    ""|all)
-	[ "$cmd" = ssh ] && usage 2 "ssh expects exactly one server"
-	cnt=$(seq $maxservers)
-	;;
-    
-    *) for s; do
-	   if [ "$cmd" = ssh -a "$found" = 1 ]; then
-	       sshcmd="$sshcmd$s "
-	   else
-	       found=0
-	       for ((n=1; n<=$maxservers; n++)); do
-		   getsrv $n
-		   echo "$snam"|grep -q "^$s$" && found=1 && cnt="$cnt
-$n"	       	   
-	       done
-	       if [ $found -eq 0 ]; then
-		   n=$(($(echo "$s"|tr -dc 0-9)))
-		   ((n<1||n>maxservers)) && usage 2 "cannot find $s"
-		   found=1 && cnt="$cnt
-$n"	       	   
+if [ "$cmd" != clean ]; then 
+    case "$1" in
+	""|all)
+	    [ "$cmd" = ssh ] && usage 2 "ssh expects exactly one server"
+	    cnt=$(seq $maxservers)
+	    ;;
+	
+	*) for s; do
+	       if [ "$cmd" = ssh -a "$found" = 1 ]; then
+		   sshcmd="$sshcmd$s "
+	       else
+		   found=0
+		   for ((n=1; n<=$maxservers; n++)); do
+		       getsrv $n
+		       echo "$snam"|grep -q "^$s$" && found=1 && cnt="$cnt
+$n"	       	       
+		   done
+		   if [ $found -eq 0 ]; then
+		       n=$(($(echo "$s"|tr -dc 0-9)))
+		       ((n<1||n>maxservers)) && usage 2 "cannot find $s"
+		       found=1 && cnt="$cnt
+$n"	       	       
+		   fi
 	       fi
-	   fi
-       done
-       cnt=$(echo $(echo "$cnt"|sort -nu))
-       ;;
-esac
-
+	   done
+	   cnt=$(echo $(echo "$cnt"|sort -nu))
+	   ;;
+    esac
+fi
 
 # do actions
 case $cmd in

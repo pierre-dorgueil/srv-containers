@@ -25,15 +25,13 @@ srv-containers
      restart   : restart a running server
      reset     : restart a server from image !!! all changes are lost
      fullreset : rebuild a server image from scratch, then 'reset'
-
-     clean     : remove servers images and containers
-                              target may be part of image name, or 'unused'
-                            
      check     : check for a basic commands set on started servers
+    targets :
+      all (or no target) to address all defined servers
+      a space separated list of servers names or numbers, between 1 and 12
 
-  targets :
-     all (or no target) to address all defined servers
-     a space separated list of servers names or numbers, between 1 and 12
+  clean     : remove servers images and containers
+                target may be part of image name, or unused
 
  
  

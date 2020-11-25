@@ -14,18 +14,18 @@ srv-containers
  
  Usage : /usr/bin/srv command target
   commands :
-     list      : show active servers
-     listall   : show all servers
-     ssh       : ssh connect a running server
-     start     : start a server
-     stop      : cleanly stops a running server
-     poweroff  : immediately stops a server
-     restart   : restart a running server
-     reset     : restart a server from image !!! all changes are lost
-     fullreset : rebuild a server image from scratch, then 'reset'
-     clean [pat][0m : remove servers images and containers
+     list       : show active servers
+     listall    : show all servers
+     ssh        : ssh connect a running server
+     start      : start a server
+     stop       : cleanly stops a running server
+     poweroff   : immediately stops a server
+     restart    : restart a running server
+     reset      : restart a server from image !!! all changes are lost
+     fullreset  : rebuild a server image from scratch, then 'reset'
+     clean [pat]: remove servers images and containers
 
-     check     : check for a basic commands set on started servers
+     check      : check for a basic commands set on started servers
 
   targets :
      all (or no target) to address all defined servers

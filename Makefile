@@ -1,9 +1,9 @@
 all:
+	@echo "srv-containers - tested on RHEL8.1, CentOS8.x, fedora 32-33 hosts"
 	@echo "make archive : create archive from system binaries"
-	@echo "make install : install archive to system binaries"
-
-vers = 0.1.2
-chgs = check podman version, tested on RHEL8.1, CentOS8.x, fedora 32-33 hosts
+	@echo "make install : extract archive to system binaries"
+	@echo "make push    : submit changes to github"
+	@echo "make pull    : reinstall from github"
 
 arch = srv.txz
 base = var/lib/srv-containers
@@ -30,7 +30,7 @@ readme:
            sed 's/[^m]*m//g;s/,)/)/;s/%/\n/g;s/^/ /'; } > README.rst
 
 push: readme
-	@git add .; git commit -m "v$(vers)i : $(chgs)"; git push origin main
+	@make archive && git add .; v=$$(sed -n '/^# \+- v/p' /bin/srv|sed 's/^# \+- //'|tail -1); git commit -m "$$v"; git push origin main
 
 pull:
 	@git pull origin main && make install

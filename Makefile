@@ -24,7 +24,7 @@ archive:
 
 install:
 	(cd /; sudo tar xJf -) < $(arch)
-	[ -x /sbin/restorecon ] && sudo /sbin/restorecon -v /bin/srv /$(serv)
+	@[ -x /sbin/restorecon ] && sudo /sbin/restorecon -v /bin/srv /$(serv) || :
 
 readme:
 	@{ printf '==============\nsrv-containers\n==============\n\n::\n\n'; \

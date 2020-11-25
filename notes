@@ -17,3 +17,6 @@ echo $x; $x
 url = https://pierre-dorgueil@github.com/pierre-dorgueil/srv-containers.git
 
 git add .; git commit -m v0.1; git push origin main
+
+cacher les identifiants git :
+git config --global credential.helper 'cache --timeout=3600'

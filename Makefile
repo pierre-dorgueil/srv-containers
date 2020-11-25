@@ -1,17 +1,14 @@
 all:
-	@echo "make archive : create archive from system binaries and copies locally (./root)"
+	@echo "make archive : create archive from system binaries"
 	@echo "make install : install archive to system binaries"
 
 vers = 0.1.2
-chgs = check podman version, tested on RHEL8.1, CentOS8.x, fedora 32 hosts
+chgs = check podman version, tested on RHEL8.1, CentOS8.x, fedora 32-33 hosts
 
 arch = srv.txz
 base = var/lib/srv-containers
 exe  = bin/srv
 serv = usr/lib/systemd/system/srv.service
-incl = bin/srv \
-       $(base) \
-       $(serv) \
 
 excl = --exclude $(base)/build/'*-*' \
        --exclude $(base)/srv-containers.conf \
@@ -20,7 +17,6 @@ excl = --exclude $(base)/build/'*-*' \
 
 archive:
 	(cd /; sudo tar cJf - $(excl) $(exe) $(base) $(serv)) > $(arch)
-	(cd root; rm -rf *; tar xJvvf -) < $(arch)
 
 install:
 	(cd /; sudo tar xJvf -) < $(arch)

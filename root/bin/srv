@@ -210,7 +210,7 @@ case $cmd in
 
     # removes podman images and containers
     clean)
-	local imgs srch="$1"
+	srch="$1"; echo $srch
 	[ "$srch" = all -o "$srch" = "" ] && srch=.
 	imgs=$(podman images|\grep "$srch")
 	if [ "$imgs" = "" ]; then echo "'$srch' : no such container image found."; else

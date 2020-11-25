@@ -9,8 +9,10 @@ srv-containers
  License :     https://www.gnu.org/licenses/gpl-3.0.txt
  
  History :
-  - v0.1  20201026 early version	            pierre.dorgueil@gmail.com
- 
+  - v0.1  20201026    early version                 pierre.dorgueil@gmail.com
+  - v1.0  20201118    first version                 pierre.dorgueil@gmail.com
+  - v1.01 20201121    added image sizes in listall  pierre.dorgueil@gmail.com
+  - v1.02 20201125    added clean command           pierre.dorgueil@gmail.com
  
  Usage : /usr/bin/srv command target
   commands :

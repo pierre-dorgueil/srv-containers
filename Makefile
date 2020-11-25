@@ -9,6 +9,7 @@ arch = srv.txz
 base = var/lib/srv-containers
 exe  = bin/srv
 serv = usr/lib/systemd/system/srv.service
+read = /$(base)/README
 
 excl = --exclude $(base)/build/'*-*' \
        --exclude $(base)/srv-containers.conf \
@@ -24,13 +25,13 @@ install:
 
 readme:
 	@{ printf '==============\nsrv-containers\n==============\n\n::\n\n'; \
-           cat /$(base)/README | \
+           cat $(read) | \
            sed "s~^Usage.*~$$(srv|tr '\n' %)~" | \
            sed "s/examples/examples ($$(cd /$(base)/build;ls *.tmpl|tr -d '\n'|sed 's/\.tmpl/,/g;s/end,//'))/" | \
            sed 's/[^m]*m//g;s/,)/)/;s/%/\n/g;s/^/ /'; } > README.rst
 
 push: readme
-	@make archive && git add .; v=$$(sed -n '/^# \+- v/p' /bin/srv|sed 's/^# \+- //'|tail -1); git commit -m "$$v"; git push origin main
+	@make archive && git add .; v=$$(egrep '^ +- +v' $(read)|tail -1|sed 's/ \+- \+//'); git commit -m "$$v"; git push origin main
 
 pull:
 	@git pull origin main && make install

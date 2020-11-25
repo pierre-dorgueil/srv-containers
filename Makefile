@@ -20,10 +20,10 @@ excl = --exclude $(base)/build/'*-*' \
 
 archive:
 	(cd /; sudo tar cJf - $(excl) $(exe) $(base) $(serv)) > $(arch)
-	(cd root; rm -rf *; tar xJvf -) < $(arch)
+	(cd root; rm -rf *; tar xJvvf -) < $(arch)
 
 install:
-	(cd /; sudo tar xJf -) < $(arch)
+	(cd /; sudo tar xJvf -) < $(arch)
 	@[ -x /sbin/restorecon ] && sudo /sbin/restorecon -v /bin/srv /$(serv) || :
 
 readme:
@@ -37,4 +37,4 @@ push: readme
 	@git add .; git commit -m "v$(vers)i : $(chgs)"; git push origin main
 
 pull:
-	@git pull origin main
+	@git pull origin main && make install

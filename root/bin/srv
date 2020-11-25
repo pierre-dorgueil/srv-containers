@@ -3,6 +3,7 @@
 # description : test linux operating system distributions as containers
 # history :     - v1.0  20201118    first version                 pierre.dorgueil@gmail.com
 #               - v1.01 20201121    added image sizes in listall  pierre.dorgueil@gmail.com
+#               - v1.02 20201125    added clean command           pierre.dorgueil@gmail.com
 
 # startup :     type "srv" without args
 # usage :       type "srv" without args
@@ -210,7 +211,7 @@ case $cmd in
 
     # removes podman images and containers
     clean)
-	srch="$1"; echo $srch
+	srch="$1"
 	[ "$srch" = all -o "$srch" = "" ] && srch=.
 	imgs=$(podman images|\grep "$srch")
 	if [ "$imgs" = "" ]; then echo "'$srch' : no such container image found."; else

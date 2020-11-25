@@ -19,7 +19,7 @@ exe=$0; [ $(id -u) != 0 ] && exec sudo $exe $*
 # check needed software
 needs() { for i; do which $i &>/dev/null && continue; echo "*** err : $i not installed"; return 1; done; return 0; }
 needs md5sum ssh-keygen podman || exit 1
-[[ $(podman --version | tr -d 'a-z ') < 2.1 ]] && echo "*** err : podman version < 2.1" && exit 1
+#[[ $(podman --version | tr -d 'a-z ') < 2.1 ]] && echo "*** err : podman version < 2.1" && exit 1
 
 # ----- constants -----------------------------------------
 
@@ -370,6 +370,7 @@ case $cmd in
 	    # rebuild image if absent
 	    if [ "$(podman images -qf reference=$oci_image$styp)" = "" ]; then
 		cd $build
+		pkdir -p dot-ssh
 		for u in $cont_users; do
 		    key=$(eval echo ~$u)/.ssh/srv_rsa
 		    if [ ! -f $key ]; then
@@ -387,7 +388,7 @@ case $cmd in
 	    fi
 	    
 	    # run new server container
-	    p=--priviledged; p=
+	    p=--privileged; [[ $(uname -r) > 5 ]] && p=
 	    x="podman run -d $p --name $server$n --hostname=$snam --ip=$podnet$((100+$n)) --dns 1.1.1.1 $oci_image$styp"
 	    { echo $x; $x 2>&1; } | log
 	    sleep 1

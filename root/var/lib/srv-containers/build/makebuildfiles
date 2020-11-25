@@ -5,9 +5,11 @@ cd /var/lib/srv-containers/build
 # dockerfiles to maintain
 dockerfiles="alpine-3.12.0 centos-8.1.1911 centos-8.2.2004 fedora-33 fedora-34 suse-leap suse-tumbleweed debian-stable debian-unstable ubuntu-bionic ubuntu-focal kali-rolling"
 
+mkpass() { python3 -c 'import crypt; print(crypt.crypt("'$1'", crypt.mksalt(crypt.METHOD_SHA512)))'; }
+
 for f in $dockerfiles; do
     type=${f/-*/}; tag=${f/*-/}
-    new=$(cat $type.tmpl end.tmpl | sed "s!@tag@!$tag!;s!@passhash@!$(mkpasswd -m sha512crypt $type)!")
+    new=$(cat $type.tmpl end.tmpl | sed "s!@tag@!$tag!;s!@passhash@!$(mkpass $type)!")
     if [ ! -f $f ]; then
 	changed=-1
     else

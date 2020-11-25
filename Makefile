@@ -13,7 +13,7 @@ incl = bin/srv \
        $(base) \
        $(serv) \
 
-excl = --exclude $(base)/build/dot-ssh/* \
+excl = --exclude $(base)/build/'*-*' \
        --exclude $(base)/srv-containers.conf \
        --exclude $(base)/srv-containers.conf.bak \
        --exclude $(base)/COPYING

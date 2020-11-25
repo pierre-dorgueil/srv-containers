@@ -156,6 +156,7 @@ usage() {
      \e[94mrestart\e[0m   : restart a running server
      \e[94mreset\e[0m     : restart a server from image \e[1m\e[31m!!! all changes are lost\e[0m
      \e[94mfullreset\e[0m : rebuild a server image from scratch, then 'reset'
+     \e[94mclean [pat][0m : remove servers images and containers
 
      \e[94mcheck\e[0m     : check for a basic commands set on started servers
 
@@ -206,9 +207,20 @@ esac
 # do actions
 case $cmd in
 
-    # removes all podman images and containers
-    __clean)
-	podman rmi --all -f
+    # removes podman images and containers
+    clean)
+	local imgs srch="$2"
+	[ "$srch" = all -o "$srch" = "" ] && srch=.
+	imgs=$(podman images|\grep "$srch")
+	if [ "$imgs" = "" ]; then echo "'$srch' : no such container image found."; else
+	    echo "$imgs"
+	    read -p "remove these images and associated containers? [y/N]"
+	    if [ "$REPLY" = y ]; then
+		podman rmi -f $(echo "$imgs"|grep -v REPOSITORY|awk '{print $3}')
+	    else
+		echo "nothing removed."
+	    fi
+	fi
 	;;
     
     # list of servers and states

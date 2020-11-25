@@ -206,6 +206,11 @@ esac
 # do actions
 case $cmd in
 
+    # removes all podman images and containers
+    __clean)
+	podman rmi --all -f
+	;;
+    
     # list of servers and states
     list|listall)
 	{
@@ -370,7 +375,7 @@ case $cmd in
 	    # rebuild image if absent
 	    if [ "$(podman images -qf reference=$oci_image$styp)" = "" ]; then
 		cd $build
-		pkdir -p dot-ssh
+		mkdir -p dot-ssh
 		for u in $cont_users; do
 		    key=$(eval echo ~$u)/.ssh/srv_rsa
 		    if [ ! -f $key ]; then

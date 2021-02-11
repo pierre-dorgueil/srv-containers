@@ -29,7 +29,7 @@ srv-containers
      clean     : remove servers images and containers
    targets :
      all (or no target) to address all defined servers
-     a space separated list of servers names or numbers, between 1 and 13
+     a space separated list of servers names or numbers, between 1 and 11
      for ssh, only one target, may be followed by command to execute
      for clean, target may be part of an image name, or unused
 

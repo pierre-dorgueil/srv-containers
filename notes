@@ -1,16 +1,19 @@
 changer d'emplacement pour le stockage des containers :
 
-dest=/backup    # espace de stockage (rapide?) de 2G par container
+old=/backup     # si contextes déja changés, sinon laisser vide
+dest=/ssd       # espace de stockage (rapide?) de 2G par container
                 # remplace /var/lib/containers si pas assez de place
-
 semanage fcontext -l | grep ^/var/lib/containers | grep -v None | while read spec a f type; do
     t=$(echo $type | sed "s/system_u:object_r://;s/:s0//")
     s=$(echo $spec | sed "s:/var/lib:$dest:")
-    x="semanage fcontext -a -t $t '$s'"
-    echo $x 
+    echo "semanage fcontext -a -t $t '$s'"
+    if [ "$old" != "" ]; then
+        s=$(echo $spec | sed "s:/var/lib:$old:")
+        echo "semanage fcontext -d '$s'"
+    fi 
 done
-x="restorecon -vR $dest/containers"
-echo $x
+echo "restorecon -vR $dest/containers"
+
 
 installer :
 git clone https://pierre-dorgueil@github.com/pierre-dorgueil/srv-containers.git

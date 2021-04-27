@@ -25,7 +25,7 @@ cacher les identifiants git :
 git config --global credential.helper 'cache --timeout=3600'   # -> ~/.gitconfig
 
 
-créer clé rsa pout authentification github :
-ssh-keygen -b 4096  -C pc -t rsa -f ~/.ssh/github_rsa (pp e..0)
+créer clé rsa pour authentification github :
+ssh-keygen -b 4096 -C pc -t rsa -f ~/.ssh/github_rsa (pp e..0)
 
 git config core.sshCommand "ssh -o IdentitiesOnly=yes -i ~/.ssh/github_rsa -F /dev/null" # -> .git/config

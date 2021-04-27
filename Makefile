@@ -2,6 +2,7 @@ all:
 	@echo "srv-containers - tested on RHEL8.1, CentOS8.x, fedora 32-33 hosts"
 	@echo "make archive : create archive from system binaries"
 	@echo "make install : extract archive to system binaries"
+	@echo "make test    : check differences between archive and system binaries"
 	@echo "make push    : submit changes to github"
 	@echo "make pull    : reinstall from github"
 
@@ -18,6 +19,9 @@ excl = --exclude $(base)/build/'*-*' \
 
 archive:
 	(cd /; sudo tar cJf - $(excl) $(exe) $(base) $(serv)) > $(arch)
+
+test:
+	(cd /; sudo tar dJvf -) < $(arch)
 
 install:
 	(cd /; sudo tar xJvf -) < $(arch)
